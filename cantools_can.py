@@ -19,6 +19,7 @@ import os
 #globals
 filename = ""
 frames = []
+signals = []
 def update_frames(frame):
     global frames
     frames.append(frame)
@@ -61,6 +62,8 @@ def render_viewer(db):
 def render_editor(db):
     pass
 def render_frame_writer():
+    if not frames in st.session_state:
+        st.session_state.frames = []
     if not "n_frames" in st.session_state:
         st.session_state.n_frames = 0
     frame_creator = st.container()
@@ -70,7 +73,7 @@ def render_frame_writer():
             c1 = st.container()
             c2 = st.container()
             with c2:
-                st.form_submit_button("Confirm Frame")
+                submit = st.form_submit_button("Confirm Frames")
     with add_remove_frames:
         st.write("Add or remove frames")
         if st.button("Add Frame"):
@@ -81,8 +84,89 @@ def render_frame_writer():
     for x in range(st.session_state['n_frames']):
         with c1:
             st.write(f"Frame {x}")
-            create_frame(f"frame{x}")
-    
+            create_frame(f"{x}")
+    # handle the frames
+    if submit:
+        for x in range(st.session_state['n_frames']):
+            if f"frame{x}" in st.session_state:
+                st.write(st.session_state[f"frame{x}"])
+            else:
+                st.write(st.session_state)
+    # signal maker section
+
+def signal_creator():
+    # get a list of all the frame names
+    frame_names = []
+    for x in range(st.session_state['n_frames']):
+        frame_names.append(st.session_state[f"frame{x}"]["name"])
+    # get the frame name
+    frame_name = st.selectbox("Frame", frame_names)
+    # get the frame id
+    # frame_id = st.session_state[f"frame{frame_names.index(frame_name)}"]["id"]
+    if not signals in st.session_state:
+        st.session_state.signals = []
+    if not "n_signals" in st.session_state:
+        st.session_state.n_signals = 0
+    signals_creator = st.container()
+    add_remove_signals = st.container()
+    with signals_creator:
+        with st.form("signalBuilder"):
+            c3 = st.container()
+            c4 = st.container()
+            with c4:
+                submit = st.form_submit_button("Confirm Signals")
+    with add_remove_signals:
+        st.write("Add or remove Signals")
+        if st.button("Add Signal"):
+            st.session_state['n_signals'] += 1
+        if st.button("Remove Signal") and st.session_state['n_signals'] > 0:
+            st.session_state['n_signals'] -= 1
+            st.session_state.pop(f"{st.session_state.n_signals}")
+        if st.button("clear signals"):
+            while st.session_state['n_signals'] > 0:
+                st.session_state['n_signals'] -= 1
+                st.session_state.pop(f"{st.session_state.n_signals}")
+        if st.button("bind signals"):
+            # clear the signals if they exist
+            if f"frame{frame_names.index(frame_name)}" in st.session_state:
+                st.session_state[f"frame{frame_names.index(frame_name)}"].pop("signals")
+                st.session_state[f"frame{frame_names.index(frame_name)}"]["signals"] = []
+            # bind the signals to the frame
+            for i in range(st.session_state['n_signals']):
+                st.session_state[f"frame{frame_names.index(frame_name)}"]['signals'].append(st.session_state[f"{i}"])
+            pass
+    for x in range(st.session_state['n_signals']):
+        with c3:
+            st.write(f"Signal {x}")
+            create_signal(f"{x}")
+    # handle the frames
+    if submit:
+        for x in range(st.session_state['n_frames']):
+            if f"frame{x}" in st.session_state:
+                st.write(st.session_state[f"frame{x}"])
+            else:
+                st.write(st.session_state)
+    # signal maker section
+
+
+def write_dbc(dbc_name):
+    info = []
+    for x in range(st.session_state['n_frames']):
+        info.append(st.session_state[f"frame{x}"])
+    # represent each frame as a string with signals under it
+    dbc_strings = []
+    for frame in info:
+        dbc_strings.append(f"BO_ {frame['id']} {frame['name']}: {frame['length']} {frame['node']}\n")
+        for signal in frame['signals']:
+            dbc_strings.append(f" SG_ {signal['name']} : {signal['start']}|{signal['length']}@{signal['byte_order']}+ ({signal['scale']},{signal['offset']}) [{signal['minimum']}|{signal['maximum']}] \"{signal['unit']}\" {signal['choices']}\n")
+    # write the database
+    db_file = open(f"{dbc_name}.dbc", "w")
+    db_file.write("VERSION \"\"\n\n")
+    db_file.write("NS_ :\n\n")
+    db_file.write("BS_:\n\n")
+    for dbc_string in dbc_strings:
+        db_file.write(dbc_string)
+    db_file.close()
 def create_frame(frame_number):
     # get a frame name
     frame_name = st.text_input("Enter a frame name", key=f"Frame_name_{frame_number}")
@@ -93,33 +177,47 @@ def create_frame(frame_number):
     # get a frame node
     frame_node = st.text_input("Enter a frame node", "Vector__XXX", key=f"Frame_node_{frame_number}")
     # signals
-    signals = []
+    if not "signals" in st.session_state[f"frame{frame_number}"]:
+        signals = []
+    else :
+        signals = st.session_state[f"frame{frame_number}"]['signals']
+    # add the frame to the session state
+    add_frame = True
+    if add_frame:
+        st.session_state[f"frame{frame_number}"] = {
+            'name': frame_name,
+            'id': frame_id,
+            'length': frame_length,
+            'node': frame_node,
+            'signals': signals
+        }
+        st.write("Frame added")
     
-def create_signal():
+def create_signal(signal_number):
     # get a signal name
-    signal_name = st.text_input("Enter a signal name", "Signal1")
+    signal_name = st.text_input("Enter a signal name", "Signal1",key=f"Signal_name_{signal_number}")
     # get a signal start
-    signal_start = st.text_input("Enter a signal start", "0")
+    signal_start = st.text_input("Enter a signal start", "0", key=f"Signal_start_{signal_number}")
     # get a signal length
-    signal_length = st.text_input("Enter a signal length", "8")
+    signal_length = st.text_input("Enter a signal length", "8", key=f"Signal_length_{signal_number}")
     # get a signal byte order
-    signal_byte_order = st.text_input("Enter a signal byte order", "0")
+    signal_byte_order = st.text_input("Enter a signal byte order", "0", key=f"Signal_byte_order_{signal_number}")
     # get a signal is signed
-    signal_is_signed = st.text_input("Enter a signal is signed", "0")
+    signal_is_signed = st.text_input("Enter a signal is signed", "0", key=f"Signal_is_signed_{signal_number}")
     # get a signal is float
-    signal_is_float = st.text_input("Enter a signal is float", "0")
+    signal_is_float = st.text_input("Enter a signal is float", "0", key=f"Signal_is_float_{signal_number}")
     # get a signal scale
-    signal_scale = st.text_input("Enter a signal scale", "1")
+    signal_scale = st.text_input("Enter a signal scale", "1", key=f"Signal_scale_{signal_number}")
     # get a signal offset
-    signal_offset = st.text_input("Enter a signal offset", "0")
+    signal_offset = st.text_input("Enter a signal offset", "0", key=f"Signal_offset_{signal_number}")
     # get a signal minimum
-    signal_minimum = st.text_input("Enter a signal minimum", "0")
+    signal_minimum = st.text_input("Enter a signal minimum", "0", key=f"Signal_minimum_{signal_number}")
     # get a signal maximum
-    signal_maximum = st.text_input("Enter a signal maximum", "0")
+    signal_maximum = st.text_input("Enter a signal maximum", "0", key=f"Signal_maximum_{signal_number}")
     # get a signal unit
-    signal_unit = st.text_input("Enter a signal unit", "None")
+    signal_unit = st.text_input("Enter a signal unit", "None", key=f"Signal_unit_{signal_number}")
     # get a signal choices
-    signal_choices = st.text_input("Enter a signal choices", "None")
+    signal_choices = st.text_input("Enter a signal Node", "None", key=f"Signal_choices_{signal_number}",value="Vector_XXX")
     # create a signal
     signal = {
         'name': signal_name,
@@ -135,8 +233,23 @@ def create_signal():
         'unit': signal_unit,
         'choices': signal_choices
     }
-    # return signal
-    return {"signal": signal}
+    
+    st.session_state[signal_number] = {
+            'name': signal_name,
+            'start': signal_start,
+            'length': signal_length,
+            'byte_order': signal_byte_order,
+            'is_signed': signal_is_signed,
+            'is_float': signal_is_float,
+            'scale': signal_scale,
+            'offset': signal_offset,
+            'minimum': signal_minimum,
+            'maximum': signal_maximum,
+            'unit': signal_unit,
+            'choices': signal_choices
+
+        }
+    st.write("Frame added")
     pass
 def main():
     
@@ -158,20 +271,18 @@ def main():
                 render_viewer(db)
             elif mode == "Write":
                 st.write("Writer coming soon!")
-                frames = []
+                st.session_state['signals']= []
                 returned_info = render_frame_writer()
-                if returned_info:
-                    filename = returned_info["filename"]
-                    if returned_info["frame"]:
-                        frames.append(returned_info["frame"])
+                signal_info = signal_creator()
                 # show frames
-                st.write("Frames")
-                if frames == []:
-                    st.write("No frames")
-                for frame in frames:
-                    st.write(frame)
-
-                pass
+                st.write("state dump")
+                st.write(st.session_state)
+                # file writer
+                dbc_name = st.text_input("DBC File Name", "dbc_example.dbc")
+                file_write_button = st.button("Write DBC File")
+                if file_write_button:
+                    write_dbc(dbc_name, st.session_state)
+                    st.write('Hello World!')
             pass
             
         else:

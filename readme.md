@@ -23,6 +23,9 @@
 * Scroll down and define your signals
 * Click "Write" to write the database to a file
 ## Known issues
-* An existing DBC file is required to access the writer (this is just a stupid design choice i will fix later)
-* The writer is not functional at this point
-* The source code is absolute spaghetti right now, please don't judge lol
+* Needs a refactor tbh
+* Must click confirm frames before adding signals
+* Must click confirm signals before writing to file
+* No input validation
+* Some UI tweaks needed
+* the state of the app is visible to the user, which is not ideal
