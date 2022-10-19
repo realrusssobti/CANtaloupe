@@ -4,6 +4,6 @@ NS_ :
 
 BS_:
 
-BO_ 0 BMS_1: 8 Vector__XXX
- SG_ v_c_climit : 7|8@0+ (5,0) [0|35] "A" Vector_XXX
- SG_ v_b_current : 11|12@0+ (5,0) [0|35] "A" Vector_XXX
+BO_ 0 piggies: 8 Vector__XXX
+BO_ 1 :  Vector__XXX
+BO_ 2 :  Vector__XXX

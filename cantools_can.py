@@ -84,6 +84,7 @@ def render_frame_writer():
     for x in range(st.session_state['n_frames']):
         with c1:
             st.write(f"Frame {x}")
+            st.session_state[f"frame{x}"] = {}
             create_frame(f"{x}")
     # handle the frames
     if submit:
@@ -119,6 +120,7 @@ def signal_creator():
         st.write("Add or remove Signals")
         if st.button("Add Signal"):
             st.session_state['n_signals'] += 1
+        
         if st.button("Remove Signal") and st.session_state['n_signals'] > 0:
             st.session_state['n_signals'] -= 1
             st.session_state.pop(f"{st.session_state.n_signals}")
@@ -217,7 +219,7 @@ def create_signal(signal_number):
     # get a signal unit
     signal_unit = st.text_input("Enter a signal unit", "None", key=f"Signal_unit_{signal_number}")
     # get a signal choices
-    signal_choices = st.text_input("Enter a signal Node", "None", key=f"Signal_choices_{signal_number}",value="Vector_XXX")
+    signal_choices = st.text_input("Enter a signal Node", "Vector_XXX", key=f"Signal_choices_{signal_number}")
     # create a signal
     signal = {
         'name': signal_name,
@@ -281,7 +283,7 @@ def main():
                 dbc_name = st.text_input("DBC File Name", "dbc_example.dbc")
                 file_write_button = st.button("Write DBC File")
                 if file_write_button:
-                    write_dbc(dbc_name, st.session_state)
+                    write_dbc(dbc_name)
                     st.write('Hello World!')
             pass
             
