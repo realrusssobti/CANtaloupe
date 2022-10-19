@@ -84,7 +84,8 @@ def render_frame_writer():
     for x in range(st.session_state['n_frames']):
         with c1:
             st.write(f"Frame {x}")
-            st.session_state[f"frame{x}"] = {}
+            if not f"frame{x}" in st.session_state:
+                st.session_state[f"frame{x}"] = {}
             create_frame(f"{x}")
     # handle the frames
     if submit:
@@ -151,10 +152,10 @@ def signal_creator():
     # signal maker section
 
 
-def write_dbc(dbc_name):
+def write_dbc(dbc_name,state):
     info = []
-    for x in range(st.session_state['n_frames']):
-        info.append(st.session_state[f"frame{x}"])
+    for x in range(state['n_frames']):
+        info.append(state[f"frame{x}"])
     # represent each frame as a string with signals under it
     dbc_strings = []
     for frame in info:
@@ -179,10 +180,10 @@ def create_frame(frame_number):
     # get a frame node
     frame_node = st.text_input("Enter a frame node", "Vector__XXX", key=f"Frame_node_{frame_number}")
     # signals
-    if not "signals" in st.session_state[f"frame{frame_number}"]:
-        signals = []
-    else :
+    try:
         signals = st.session_state[f"frame{frame_number}"]['signals']
+    except:
+        signals = ['theres an error']
     # add the frame to the session state
     add_frame = True
     if add_frame:
@@ -283,7 +284,7 @@ def main():
                 dbc_name = st.text_input("DBC File Name", "dbc_example.dbc")
                 file_write_button = st.button("Write DBC File")
                 if file_write_button:
-                    write_dbc(dbc_name)
+                    write_dbc(dbc_name, st.session_state)
                     st.write('Hello World!')
             pass
             
