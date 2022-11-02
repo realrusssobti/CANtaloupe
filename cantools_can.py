@@ -20,10 +20,7 @@ import os
 filename = ""
 frames = []
 signals = []
-def update_frames(frame):
-    global frames
-    frames.append(frame)
-    pass
+
 def signal_to_dict(signal):
     # The keys are :
     '''
@@ -75,12 +72,15 @@ def render_frame_writer():
             with c2:
                 submit = st.form_submit_button("Confirm Frames")
     with add_remove_frames:
-        st.write("Add or remove frames")
-        if st.button("Add Frame"):
-            st.session_state['n_frames'] += 1
-        if st.button("Remove Frame"):
-            st.session_state['n_frames'] -= 1
-            st.session_state.pop(f"frame{st.session_state.n_frames}")
+        st.write("Add or remove Frames")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Add Frame"):
+                st.session_state['n_frames'] += 1
+        with col2:
+            if st.button("Remove Frame"):
+                st.session_state['n_frames'] -= 1
+                st.session_state.pop(f"frame{st.session_state.n_frames}")
     for x in range(st.session_state['n_frames']):
         with c1:
             st.write(f"Frame {x}")
@@ -119,17 +119,23 @@ def signal_creator():
                 submit = st.form_submit_button("Confirm Signals")
     with add_remove_signals:
         st.write("Add or remove Signals")
-        if st.button("Add Signal"):
-            st.session_state['n_signals'] += 1
-        
-        if st.button("Remove Signal") and st.session_state['n_signals'] > 0:
-            st.session_state['n_signals'] -= 1
-            st.session_state.pop(f"{st.session_state.n_signals}")
-        if st.button("clear signals"):
-            while st.session_state['n_signals'] > 0:
+        sigcol1, sigcol2, sigcol3 = st.columns(3)
+
+        with sigcol1:
+            if st.button("Add Signal"):
+                st.session_state['n_signals'] += 1
+        with sigcol2:    
+            if st.button("Remove Signal") and st.session_state['n_signals'] > 0:
                 st.session_state['n_signals'] -= 1
                 st.session_state.pop(f"{st.session_state.n_signals}")
-        if st.button("bind signals"):
+        with sigcol3:
+            if st.button("clear signals"):
+                while st.session_state['n_signals'] > 0:
+                    st.session_state['n_signals'] -= 1
+                    st.session_state.pop(f"{st.session_state.n_signals}")
+        # subheader for confirming signals
+        st.subheader("Click the button to confirm signals")
+        if st.button("confirm signals"):
             # clear the signals if they exist
             if f"frame{frame_names.index(frame_name)}" in st.session_state:
                 st.session_state[f"frame{frame_names.index(frame_name)}"].pop("signals")
@@ -152,7 +158,7 @@ def signal_creator():
     # signal maker section
 
 
-def write_dbc(dbc_name,state):
+def write_dbc(dbc_name,state,mode):
     info = []
     for x in range(state['n_frames']):
         info.append(state[f"frame{x}"])
@@ -163,13 +169,25 @@ def write_dbc(dbc_name,state):
         for signal in frame['signals']:
             dbc_strings.append(f" SG_ {signal['name']} : {signal['start']}|{signal['length']}@{signal['byte_order']}+ ({signal['scale']},{signal['offset']}) [{signal['minimum']}|{signal['maximum']}] \"{signal['unit']}\" {signal['choices']}\n")
     # write the database
-    db_file = open(f"{dbc_name}.dbc", "w")
-    db_file.write("VERSION \"\"\n\n")
-    db_file.write("NS_ :\n\n")
-    db_file.write("BS_:\n\n")
-    for dbc_string in dbc_strings:
-        db_file.write(dbc_string)
-    db_file.close()
+    # db_file = open(f"{dbc_name}.dbc", "w")
+    # db_file.write("VERSION \"\"\n\n")
+    # db_file.write("NS_ :\n\n")
+    # db_file.write("BS_:\n\n")
+    # for dbc_string in dbc_strings:
+    #     db_file.write(dbc_string)
+    # db_file.close()
+
+    # create the list of strings to output
+    dbc_strings.insert(0, "VERSION \"\"\n\n")
+    dbc_strings.insert(1, "NS_ :\n\n")
+    dbc_strings.insert(2, "BS_:\n\n")
+    if mode == "write":
+        db_file = open(f"{dbc_name}.dbc", "w")
+        for dbc_string in dbc_strings:
+            db_file.write(dbc_string)
+        db_file.close()
+    else:
+        return dbc_strings
 def create_frame(frame_number):
     # get a frame name
     frame_name = st.text_input("Enter a frame name", key=f"Frame_name_{frame_number}")
@@ -260,38 +278,35 @@ def main():
     st.write("This is a simple DBC parser that will parse a DBC file and display the frames and signals in a table.")
     st.write("The DBC file must be in the same directory as this script.")
     # dbc_file = st.text_input("DBC File Name", "dbc_example.dbc")
-    dbc_file = st.file_uploader("Upload DBC File", type="dbc")
-    if dbc_file:
-        dbc_file = dbc_file.read()
-        dbc_file = dbc_file.decode("ISO-8859-1")
-    
+
+
+    # select read or write
+    st.write("Select a mode")
+    mode = st.selectbox("Mode", ["Read", "Write"])
+    if mode == "Read":
+        dbc_file = st.file_uploader("Upload DBC File", type="dbc")
+        # read the dbc file
         if dbc_file:
             db = cantools.database.load_string(dbc_file)
-            # select read or write
-            st.write("Select a mode")
-            mode = st.selectbox("Mode", ["Read", "Write"])
-            if mode == "Read":
-                render_viewer(db)
-            elif mode == "Write":
-                st.write("Writer coming soon!")
-                st.session_state['signals']= []
-                returned_info = render_frame_writer()
-                signal_info = signal_creator()
-                # show frames
-                st.write("state dump")
-                st.write(st.session_state)
-                # file writer
-                dbc_name = st.text_input("DBC File Name", "dbc_example.dbc")
-                file_write_button = st.button("Write DBC File")
-                if file_write_button:
-                    write_dbc(dbc_name, st.session_state)
-                    st.write('Hello World!')
-            pass
-            
+            render_viewer(db)
         else:
-            st.write("DBC file not found.")
-    else:
-        st.write("Please upload a DBC file.")
+            st.write("No DBC file selected")
+        
+    elif mode == "Write":
+        st.write("Writer coming soon!")
+        st.session_state['signals']= []
+        returned_info = render_frame_writer()
+        signal_info = signal_creator()
+        # show frames
+        st.write("state dump")
+        st.write(st.session_state)
+        # file writer
+        dbc_name = st.text_input("DBC File Name", "dbc_example.dbc")
+        file_write_button = st.button("Write DBC File")
+        if file_write_button:
+            write_dbc(dbc_name, st.session_state,"write")
+            st.write('Hello World!')
     pass
-
-main()
+    
+if __name__ == "__main__":
+    main()
